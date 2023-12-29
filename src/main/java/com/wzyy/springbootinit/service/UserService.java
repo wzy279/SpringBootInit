@@ -8,6 +8,7 @@ import com.wzyy.springbootinit.model.vo.LoginUserVO;
 import com.wzyy.springbootinit.model.vo.UserVO;
 
 import java.util.List;
+import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -22,9 +23,11 @@ public interface UserService extends IService<User> {
      * @param userAccount   用户账户
      * @param userPassword  用户密码
      * @param checkPassword 校验密码
+     * @param userEmail
+     * @param captcha
      * @return 新用户 id
      */
-    long userRegister(String userAccount, String userPassword, String checkPassword);
+    long userRegister(String userAccount, String userPassword, String checkPassword,String userEmail,String captcha);
 
     /**
      * 用户登录
@@ -34,7 +37,16 @@ public interface UserService extends IService<User> {
      * @param request
      * @return 脱敏后的用户信息
      */
-    LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
+    LoginUserVO userLoginAccount(String userAccount, String userPassword, HttpServletRequest request);
+
+    /**
+     * 获取验证码
+     *
+     * @param email
+     * @param encode
+     * @return
+     */
+    Boolean getCODE(String email,String encode) throws MessagingException;
 
 
     /**

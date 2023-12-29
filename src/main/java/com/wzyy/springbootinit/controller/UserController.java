@@ -5,22 +5,21 @@ import com.wzyy.springbootinit.common.BaseResponse;
 import com.wzyy.springbootinit.common.DeleteRequest;
 import com.wzyy.springbootinit.common.ErrorCode;
 import com.wzyy.springbootinit.common.ResultUtils;
+import com.wzyy.springbootinit.model.dto.loginMessage.LoginMessageQueryRequest;
+import com.wzyy.springbootinit.model.dto.user.*;
 import com.wzyy.springbootinit.model.entity.User;
 import com.wzyy.springbootinit.annotation.AuthCheck;
 import com.wzyy.springbootinit.constant.UserConstant;
 import com.wzyy.springbootinit.exception.BusinessException;
 import com.wzyy.springbootinit.exception.ThrowUtils;
-import com.wzyy.springbootinit.model.dto.user.UserAddRequest;
-import com.wzyy.springbootinit.model.dto.user.UserLoginRequest;
-import com.wzyy.springbootinit.model.dto.user.UserQueryRequest;
-import com.wzyy.springbootinit.model.dto.user.UserRegisterRequest;
-import com.wzyy.springbootinit.model.dto.user.UserUpdateMyRequest;
-import com.wzyy.springbootinit.model.dto.user.UserUpdateRequest;
+import com.wzyy.springbootinit.model.vo.LoginMessageV0;
 import com.wzyy.springbootinit.model.vo.LoginUserVO;
 import com.wzyy.springbootinit.model.vo.UserVO;
+import com.wzyy.springbootinit.service.LoginMessageService;
 import com.wzyy.springbootinit.service.UserService;
 import java.util.List;
 import javax.annotation.Resource;
+import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
 
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +43,9 @@ public class UserController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private LoginMessageService loginMessageService;
+
 
     // region 登录相关
 
@@ -61,22 +63,24 @@ public class UserController {
         String userAccount = userRegisterRequest.getUserAccount();
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
+        String userEmail = userRegisterRequest.getUserEmail();
+        String captcha = userRegisterRequest.getCaptcha();
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
             return null;
         }
-        long result = userService.userRegister(userAccount, userPassword, checkPassword);
+        long result = userService.userRegister(userAccount, userPassword, checkPassword,userEmail,captcha);
         return ResultUtils.success(result);
     }
 
     /**
-     * 用户登录
+     * 用户账号密码登录
      *
      * @param userLoginRequest
      * @param request
      * @return
      */
-    @PostMapping("/login")
-    public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    @PostMapping("/login/account")
+    public BaseResponse<LoginUserVO> userLoginBYAccount(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -85,9 +89,32 @@ public class UserController {
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request);
+        LoginUserVO loginUserVO = userService.userLoginAccount(userAccount, userPassword, request);
         return ResultUtils.success(loginUserVO);
     }
+
+    /**
+     * 使用邮箱找回密码
+     * @param email
+     * @param request
+     * @return
+     */
+    @GetMapping("emailCode")
+    public BaseResponse<Boolean> userLoginByEmailGetCode(String email,String encode,HttpServletRequest request) throws MessagingException {
+        ThrowUtils.throwIf(email==null||email.isEmpty(),ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(encode==null||encode.isEmpty(),ErrorCode.PARAMS_ERROR);
+        Boolean code = userService.getCODE(email,encode);
+        return ResultUtils.success(code);
+    }
+
+
+    @PostMapping("changePassBYEmail")
+    public BaseResponse<Boolean> changPassByEmail(@RequestBody UserChangePassRequest userChangePassRequest,HttpServletRequest request){
+        ThrowUtils.throwIf(userChangePassRequest==null,ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(true);
+    }
+
+
 
 
     /**
@@ -276,5 +303,11 @@ public class UserController {
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+    @PostMapping("getLoginMesaage")
+    public BaseResponse<List<LoginMessageV0>> getLoginMessage(@RequestBody LoginMessageQueryRequest loginMessageQueryRequest, HttpServletRequest request){
+        loginMessageQueryRequest.setUserId(userService.getLoginUser(request).getId());
+        List<LoginMessageV0> loginMessageList = loginMessageService.getLoginMessageList(loginMessageQueryRequest);
+        return ResultUtils.success(loginMessageList);
     }
 }

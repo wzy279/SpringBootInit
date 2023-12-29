@@ -19,7 +19,7 @@ spring:
   # todo 需替换配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/my_db
+    url: jdbc:mysql://localhost:3306/fragmentation
     username: root
     password: Wzy020730!
   # Redis 配置
@@ -35,9 +35,19 @@ spring:
     multipart:
       # 大小限制
       max-file-size: 10MB
+  mail:
+    username: 1976823609@qq.com
+    password: bbzwhunbhsupciab
+    host: smtp.qq.com
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+    default-encoding: utf-8
 server:
   address: 0.0.0.0
-  port: 8101
+  port: 8279
   servlet:
     context-path: /api
     # cookie 30 天过期
@@ -50,7 +60,7 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
-      logic-delete-field: isDelete # 全局逻辑删除的实体字段名
+      logic-delete-field: is_delete # 全局逻辑删除的实体字段名
       logic-delete-value: 1 # 逻辑已删除值（默认为 1）
       logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
 minio:
@@ -61,12 +71,11 @@ minio:
 knife4j:
   enable: true
   openapi:
-    title: Knife4j官方文档
-    description: "`我是测试`,**你知道吗**
-    # aaa"
-    email: xiaoymin@foxmail.com
-    concat: 八一菜刀
-    url: https://docs.xiaominfo.com
+    title: WZY的高效碎片化复习系统
+    description: "测试专用，正式服务需关掉"
+    email: wangzhaoyiww@gmail.com
+    concat: WZY
+    url: http：//ip:port
     version: v4.0
     license: Apache 2.0
     license-url: https://stackoverflow.com/

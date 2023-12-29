@@ -6,16 +6,19 @@
 <mapper namespace="com.wzyy.springbootinit.mapper.UserMapper">
     <resultMap id="BaseResultMap" type="com.wzyy.springbootinit.model.entity.User">
         <id property="id" column="id" jdbcType="BIGINT"/>
-        <result property="userName" column="userName" jdbcType="VARCHAR"/>
-        <result property="userAvatar" column="userAvatar" jdbcType="VARCHAR"/>
-        <result property="userProfile" column="userProfile" jdbcType="VARCHAR"/>
-        <result property="userRole" column="userRole" jdbcType="VARCHAR"/>
-        <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
-        <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
-        <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
+        <result column="user_account" jdbcType="VARCHAR" property="userAccount" />
+        <result column="user_password" jdbcType="VARCHAR" property="userPassword" />
+        <result column="user_name" jdbcType="VARCHAR" property="userName" />
+        <result column="user_email" jdbcType="VARCHAR" property="userEmail" />
+        <result column="user_avatar" jdbcType="VARCHAR" property="userAvatar" />
+        <result column="user_profile" jdbcType="VARCHAR" property="userProfile" />
+        <result column="user_role" jdbcType="VARCHAR" property="userRole" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+        <result column="is_delete" jdbcType="TINYINT" property="isDelete" />
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,userName,userAvatar,userProfile,userRole,createTime,updateTime,isDelete
+        id,user_name,user_avatar,user_profile,user_role,create_time,update_time,is_delete,user_email,user_account,user_password
     </sql>
 </mapper>
