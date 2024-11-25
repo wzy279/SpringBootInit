@@ -22,14 +22,13 @@ import javax.annotation.Resource;
 import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
 
+import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 用户接口
@@ -38,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/user")
 @Slf4j
+@Api(tags = "用户相关操作")
 public class UserController {
 
     @Resource
@@ -47,14 +47,13 @@ public class UserController {
     private LoginMessageService loginMessageService;
 
 
-    // region 登录相关
-
     /**
      * 用户注册
      *
      * @param userRegisterRequest
      * @return
      */
+    @Operation(summary = "用户注册")
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         if (userRegisterRequest == null) {
@@ -79,42 +78,39 @@ public class UserController {
      * @param request
      * @return
      */
-    @PostMapping("/login/account")
+    @Operation(summary = "用户登录")
+    @PostMapping("/login")
     public BaseResponse<LoginUserVO> userLoginBYAccount(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
-        if (StringUtils.isAnyBlank(userAccount, userPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
+        ThrowUtils.throwIf(StringUtils.isAnyBlank(userAccount, userPassword),new BusinessException(ErrorCode.PARAMS_ERROR));
         LoginUserVO loginUserVO = userService.userLoginAccount(userAccount, userPassword, request);
         return ResultUtils.success(loginUserVO);
     }
 
     /**
      * 使用邮箱找回密码
-     * @param email
-     * @param request
+     * @param email 邮箱
+     * @param encode 发送邮件的类型
      * @return
      */
-    @GetMapping("emailCode")
-    public BaseResponse<Boolean> userLoginByEmailGetCode(String email,String encode,HttpServletRequest request) throws MessagingException {
+    @Operation(summary = "获取验证码")
+    @GetMapping("getEmailCode")
+    public BaseResponse<Boolean> userLoginByEmailGetCode(String email,@RequestParam(defaultValue = "0") String encode) throws MessagingException {
         ThrowUtils.throwIf(email==null||email.isEmpty(),ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf(encode==null||encode.isEmpty(),ErrorCode.PARAMS_ERROR);
         Boolean code = userService.getCODE(email,encode);
         return ResultUtils.success(code);
     }
 
-
+    @Operation(summary = "通过邮箱修改密码")
     @PostMapping("changePassBYEmail")
     public BaseResponse<Boolean> changPassByEmail(@RequestBody UserChangePassRequest userChangePassRequest,HttpServletRequest request){
         ThrowUtils.throwIf(userChangePassRequest==null,ErrorCode.PARAMS_ERROR);
         return ResultUtils.success(true);
     }
-
-
 
 
     /**
@@ -123,12 +119,10 @@ public class UserController {
      * @param request
      * @return
      */
+    @Operation(summary = "用户退出登录")
     @PostMapping("/logout")
     public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
-        if (request == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        boolean result = userService.userLogout(request);
+        boolean result = userService.userLogout();
         return ResultUtils.success(result);
     }
 
@@ -138,6 +132,7 @@ public class UserController {
      * @param request
      * @return
      */
+    @Operation(summary = "获取当前用户")
     @GetMapping("/get/login")
     public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
         User user = userService.getLoginUser(request);
@@ -155,6 +150,7 @@ public class UserController {
      * @param request
      * @return
      */
+    @Operation(summary = "新增用户")
     @PostMapping("/add")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest, HttpServletRequest request) {
@@ -175,6 +171,7 @@ public class UserController {
      * @param request
      * @return
      */
+    @Operation(summary = "删除用户")
     @PostMapping("/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
@@ -192,6 +189,7 @@ public class UserController {
      * @param request
      * @return
      */
+    @Operation(summary = "更新用户")
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest,
@@ -213,6 +211,7 @@ public class UserController {
      * @param request
      * @return
      */
+    @Operation(summary = "获取用户")
     @GetMapping("/get")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<User> getUserById(long id, HttpServletRequest request) {

@@ -43,7 +43,6 @@ public interface UserService extends IService<User> {
      * 获取验证码
      *
      * @param email
-     * @param encode
      * @return
      */
     Boolean getCODE(String email,String encode) throws MessagingException;
@@ -84,10 +83,9 @@ public interface UserService extends IService<User> {
     /**
      * 用户注销
      *
-     * @param request
      * @return
      */
-    boolean userLogout(HttpServletRequest request);
+    boolean userLogout();
 
     /**
      * 获取脱敏的已登录用户信息

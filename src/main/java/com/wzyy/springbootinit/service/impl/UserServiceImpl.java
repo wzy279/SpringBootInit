@@ -1,5 +1,7 @@
 package com.wzyy.springbootinit.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.Hutool;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.extra.mail.MailUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -29,9 +31,11 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Resource;
+import javax.jws.soap.SOAPBinding;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.constraints.Email;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -74,12 +78,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //如果有邮箱验证邮箱验证码对不对
         if(userEmail!=null&&!userEmail.isEmpty()){
             ThrowUtils.throwIf(captcha.isEmpty(),ErrorCode.SYSTEM_ERROR,"参数为空");
+            ThrowUtils.throwIf(!userEmail.contains("@"),ErrorCode.PARAMS_ERROR,"用户邮箱需要包含@");
             String  trueCaptcha = stringRedisTemplate.opsForValue().get(CodeNumePath + userEmail);
             if(trueCaptcha==null){
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR,"验证码错误！");
             }
             ThrowUtils.throwIf(!captcha.equals(trueCaptcha),ErrorCode.PARAMS_ERROR,"邮箱验证码错误！");
         }
+        ThrowUtils.throwIf(userAccount.contains("@"),ErrorCode.PARAMS_ERROR,"用户账户禁止包含@");
         ThrowUtils.throwIf(userAccount.length() < 4,ErrorCode.PARAMS_ERROR,"用户账号过短");
         ThrowUtils.throwIf(userPassword.length() < 8 || checkPassword.length() < 8,ErrorCode.PARAMS_ERROR, "用户密码过短");
         // 密码和校验密码相同
@@ -109,27 +115,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public LoginUserVO userLoginAccount(String userAccount, String userPassword, HttpServletRequest request) {
         // 1. 校验
-        if (StringUtils.isAnyBlank(userAccount, userPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
-        }
-        if (userAccount.length() < 4) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号错误");
-        }
-        if (userPassword.length() < 8) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码错误");
-        }
+        ThrowUtils.throwIf(StringUtils.isAnyBlank(userAccount, userPassword),new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空"));
+        ThrowUtils.throwIf(userAccount.length() < 4,new BusinessException(ErrorCode.PARAMS_ERROR, "账号错误"));
+        ThrowUtils.throwIf(userPassword.length() < 8,new BusinessException(ErrorCode.PARAMS_ERROR, "密码错误"));
         // 2. 加密
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
         // 查询用户是否存在
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_account", userAccount);
+        queryWrapper.eq("user_account", userAccount).or().eq("user_Email", userAccount);
         queryWrapper.eq("user_password", encryptPassword);
         User user = this.baseMapper.selectOne(queryWrapper);
         // 用户不存在
-        if (user == null) {
-            log.info("user login failed, userAccount cannot match userPassword");
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
-        }
+        ThrowUtils.throwIf(user == null,new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误"));
         String ip = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
         log.info("ip is {}",ip);
@@ -142,7 +139,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         loginMessage.setLoginWay("账号密码");
         loginMessageMapper.insert(loginMessage);
         // 3. 记录用户的登录态
-        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, user);
+        StpUtil.login(user.getId());
         return this.getLoginUserVO(user);
     }
 
@@ -151,10 +148,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("user_email",email);
         User user = this.baseMapper.selectOne(queryWrapper);
-        ThrowUtils.throwIf(user==null&&encode.equals("0"),ErrorCode.NOT_FOUND_ERROR);
-        ThrowUtils.throwIf(user!=null&&encode.equals("1"),ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(user==null&&encode.equals(EmailTypeEnum.findEmail.getEncode()),ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(user!=null&&encode.equals(EmailTypeEnum.Register.getEncode()),ErrorCode.NOT_FOUND_ERROR);
         String message = getCodeNum(email,encode);
-        String send = MailUtil.send(email, "欢迎使用WZY的高效碎片化复习系统!", message, true);
+        String send = MailUtil.send(email, "欢迎使用该系统!", message, true);
         if(send!=null){
             return true;
         }
@@ -171,19 +168,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public User getLoginUser(HttpServletRequest request) {
-        // 先判断是否已登录
-        Object userObj = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
-        User currentUser = (User) userObj;
-        if (currentUser == null || currentUser.getId() == null) {
-            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
-        }
-        // 从数据库查询（追求性能的话可以注释，直接走缓存）
-        long userId = currentUser.getId();
-        currentUser = this.getById(userId);
-        if (currentUser == null) {
-            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
-        }
-        return currentUser;
+        long userId = StpUtil.getLoginIdAsLong();
+        return this.getById(userId);
     }
 
     /**
@@ -227,15 +213,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     /**
      * 用户注销
      *
-     * @param request
      */
     @Override
-    public boolean userLogout(HttpServletRequest request) {
-        if (request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE) == null) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "未登录");
-        }
-        // 移除登录态
-        request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
+    public boolean userLogout() {
+        StpUtil.logout();
         return true;
     }
 
