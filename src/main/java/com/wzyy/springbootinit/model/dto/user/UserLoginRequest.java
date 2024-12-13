@@ -16,10 +16,6 @@ public class UserLoginRequest implements Serializable {
      * 用户账号
      */
     private String userAccount;
-    /**
-     * 用户邮箱
-     */
-    private String userEmail;
 
     /**
      * 用户密码

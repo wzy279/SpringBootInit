@@ -54,7 +54,7 @@ public class RequestLimitInterceptor {
         RequestAttributes requestAttributes = RequestContextHolder.currentRequestAttributes();
         HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
         // 当前登录用户
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         // 必须有该权限才通过
         ThrowUtils.throwIf(loginUser==null, ErrorCode.NOT_LOGIN_ERROR);
         String key = REDISHEAD+loginUser.getId().toString() + request.getRequestURI();

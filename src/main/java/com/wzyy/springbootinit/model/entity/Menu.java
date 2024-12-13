@@ -9,6 +9,9 @@ import java.io.Serializable;
 import java.util.Date;
 import lombok.Data;
 
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+
 /**
  * 权限表
  */
@@ -28,6 +31,7 @@ public class Menu implements Serializable {
      */
     @TableField(value = "menu_name")
     @Schema(description="权限名称")
+    @NotBlank(message = "权限名称不能为空")
     private String menuName;
 
     /**
@@ -35,6 +39,7 @@ public class Menu implements Serializable {
      */
     @TableField(value = "perms")
     @Schema(description="权限编码")
+    @NotBlank(message = "权限编码不能为空")
     private String perms;
 
     /**
@@ -42,6 +47,7 @@ public class Menu implements Serializable {
      */
     @TableField(value = "parent_id")
     @Schema(description="父权限id")
+    @NotNull(message = "父权限不能为空")
     private Long parentId;
 
     /**

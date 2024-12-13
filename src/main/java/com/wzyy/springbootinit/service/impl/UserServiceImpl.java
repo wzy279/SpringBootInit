@@ -1,5 +1,7 @@
 package com.wzyy.springbootinit.service.impl;
 
+import cn.dev33.satoken.stp.SaLoginModel;
+import cn.dev33.satoken.stp.SaTokenInfo;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.Hutool;
 import cn.hutool.core.util.RandomUtil;
@@ -80,9 +82,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             ThrowUtils.throwIf(captcha.isEmpty(),ErrorCode.SYSTEM_ERROR,"参数为空");
             ThrowUtils.throwIf(!userEmail.contains("@"),ErrorCode.PARAMS_ERROR,"用户邮箱需要包含@");
             String  trueCaptcha = stringRedisTemplate.opsForValue().get(CodeNumePath + userEmail);
-            if(trueCaptcha==null){
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR,"验证码错误！");
-            }
+            ThrowUtils.throwIf(trueCaptcha==null,new BusinessException(ErrorCode.SYSTEM_ERROR,"验证码错误！"));
             ThrowUtils.throwIf(!captcha.equals(trueCaptcha),ErrorCode.PARAMS_ERROR,"邮箱验证码错误！");
         }
         ThrowUtils.throwIf(userAccount.contains("@"),ErrorCode.PARAMS_ERROR,"用户账户禁止包含@");
@@ -122,22 +122,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
         // 查询用户是否存在
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_account", userAccount).or().eq("user_Email", userAccount);
+        queryWrapper.and(i->i.eq("user_account", userAccount).or().eq("user_Email", userAccount));
         queryWrapper.eq("user_password", encryptPassword);
         User user = this.baseMapper.selectOne(queryWrapper);
         // 用户不存在
         ThrowUtils.throwIf(user == null,new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误"));
-        String ip = request.getRemoteAddr();
-        String userAgent = request.getHeader("User-Agent");
-        log.info("ip is {}",ip);
-        log.info("userAgent is {}",userAgent);
-        LoginMessage loginMessage = new LoginMessage();
-        loginMessage.setUserId(user.getId());
-        loginMessage.setLoginTime(new Date());
-        loginMessage.setLoginDeviceName("手机名称");
-        loginMessage.setLoginDeviceSystem("系统");
-        loginMessage.setLoginWay("账号密码");
-        loginMessageMapper.insert(loginMessage);
         // 3. 记录用户的登录态
         StpUtil.login(user.getId());
         return this.getLoginUserVO(user);
@@ -163,11 +152,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     /**
      * 获取当前登录用户
      *
-     * @param request
      * @return
      */
     @Override
-    public User getLoginUser(HttpServletRequest request) {
+    public User getLoginUser() {
         long userId = StpUtil.getLoginIdAsLong();
         return this.getById(userId);
     }
@@ -191,24 +179,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return this.getById(userId);
     }
 
-    /**
-     * 是否为管理员
-     *
-     * @param request
-     * @return
-     */
-    @Override
-    public boolean isAdmin(HttpServletRequest request) {
-        // 仅管理员可查询
-        Object userObj = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
-        User user = (User) userObj;
-        return isAdmin(user);
-    }
-
-    @Override
-    public boolean isAdmin(User user) {
-        return user != null && UserRoleEnum.ADMIN.getValue().equals(user.getUserRole());
-    }
 
     /**
      * 用户注销
@@ -227,6 +197,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         LoginUserVO loginUserVO = new LoginUserVO();
         BeanUtils.copyProperties(user, loginUserVO);
+        SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
+//        tokenInfo.getTokenValue();
+//        loginUserVO.setTokenName(tokenInfo.getTokenName());
+//        loginUserVO.setTokenValue(tokenInfo.getTokenValue());
         return loginUserVO;
     }
 

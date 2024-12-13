@@ -1,5 +1,7 @@
 package com.wzyy.springbootinit.controller;
 
+import cn.dev33.satoken.annotation.SaIgnore;
+import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wzyy.springbootinit.common.BaseResponse;
 import com.wzyy.springbootinit.common.DeleteRequest;
@@ -101,8 +103,8 @@ public class UserController {
     @GetMapping("getEmailCode")
     public BaseResponse<Boolean> userLoginByEmailGetCode(String email,@RequestParam(defaultValue = "0") String encode) throws MessagingException {
         ThrowUtils.throwIf(email==null||email.isEmpty(),ErrorCode.PARAMS_ERROR);
-        Boolean code = userService.getCODE(email,encode);
-        return ResultUtils.success(code);
+        Boolean flag = userService.getCODE(email,encode);
+        return ResultUtils.success(flag);
     }
 
     @Operation(summary = "通过邮箱修改密码")
@@ -116,12 +118,11 @@ public class UserController {
     /**
      * 用户注销
      *
-     * @param request
      * @return
      */
     @Operation(summary = "用户退出登录")
     @PostMapping("/logout")
-    public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
+    public BaseResponse<Boolean> userLogout() {
         boolean result = userService.userLogout();
         return ResultUtils.success(result);
     }
@@ -135,7 +136,7 @@ public class UserController {
     @Operation(summary = "获取当前用户")
     @GetMapping("/get/login")
     public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
-        User user = userService.getLoginUser(request);
+        User user = userService.getLoginUser();
         return ResultUtils.success(userService.getLoginUserVO(user));
     }
 
@@ -295,7 +296,7 @@ public class UserController {
         if (userUpdateMyRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userService.getLoginUser();
         User user = new User();
         BeanUtils.copyProperties(userUpdateMyRequest, user);
         user.setId(loginUser.getId());
@@ -305,8 +306,15 @@ public class UserController {
     }
     @PostMapping("getLoginMesaage")
     public BaseResponse<List<LoginMessageV0>> getLoginMessage(@RequestBody LoginMessageQueryRequest loginMessageQueryRequest, HttpServletRequest request){
-        loginMessageQueryRequest.setUserId(userService.getLoginUser(request).getId());
+        loginMessageQueryRequest.setUserId(userService.getLoginUser().getId());
         List<LoginMessageV0> loginMessageList = loginMessageService.getLoginMessageList(loginMessageQueryRequest);
         return ResultUtils.success(loginMessageList);
+    }
+
+
+    @GetMapping("getLoginUser")
+    public BaseResponse<UserVO> getLoginUser() {
+
+        return null;
     }
 }
